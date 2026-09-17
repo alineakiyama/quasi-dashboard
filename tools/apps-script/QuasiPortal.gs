@@ -180,7 +180,7 @@ function quasiPortalCarimbarDatas_(sh, cfg, range) {
   var chaves = sh.getRange(r0, cChave + 1, n, 1).getValues();
   var faixa = sh.getRange(r0, cData + 1, n, 1);
   var datas = faixa.getValues();
-  var hoje = Utilities.formatDate(new Date(), SpreadsheetApp.getActive().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+  var hoje = Utilities.formatDate(new Date(), quasiPortalFuso_(), 'yyyy-MM-dd');
   var mudou = false;
   for (var i = 0; i < n; i++) {
     if (String(chaves[i][0]).trim() !== '' && String(datas[i][0]).trim() === '') {
@@ -212,7 +212,7 @@ function quasiPortalEnviar_(nome, forcar) {
   var sh = ss.getSheetByName(nome);
   if (!sh) return 'tab not found';
 
-  var tz = ss.getSpreadsheetTimeZone();
+  var tz = quasiPortalFuso_();
   var info = quasiPortalCabecalho_(sh);
   var ncols = info.cabecalhos.length;
   var ultimaLinha = sh.getLastRow();
@@ -261,4 +261,9 @@ function quasiPortalEnviar_(nome, forcar) {
   }
   if (corpo.unchanged) return linhas.length + ' rows, no changes';
   return linhas.length + ' rows (+' + corpo.inserted + ' new, ' + corpo.deleted + ' removed)';
+}
+
+/** Fuso da planilha; cópias às vezes vêm sem fuso definido. */
+function quasiPortalFuso_() {
+  return SpreadsheetApp.getActive().getSpreadsheetTimeZone() || Session.getScriptTimeZone() || 'America/New_York';
 }
