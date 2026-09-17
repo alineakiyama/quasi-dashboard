@@ -265,26 +265,26 @@ export function renderOverview(data, state) {
     <div class="grid grid--kpi">${kpisTop}</div>
     <div class="grid grid--kpi">${kpisBottom}</div>
 
-    <section class="card">
-      <div class="card__head">
-        <div>
-          <h2 class="card__title">Volume by ${unidadeTempo}</h2>
-          <p class="card__note">Received is when a conversation is born; answered is when a person
-          actually replied to it. The ${unidadeTempo}s where the rose line sits above the amber one are
-          the ${unidadeTempo}s the queue grew.</p>
-        </div>
-        <span class="card__aside">${esc(fmtRange(w.from, w.to))}</span>
-      </div>
-      <div class="card__body">${volume}
-        ${umDia ? '' : legend([
-          { label: 'Received', color: seriesColor(0) },
-          { label: 'Answered', color: seriesColor(1) },
-          { label: 'Closed', color: seriesColor(2) },
-        ], { line: true })}
-      </div>
-    </section>
-
     <div class="grid grid--2">
+      <section class="card">
+        <div class="card__head">
+          <div>
+            <h2 class="card__title">Volume by ${unidadeTempo}</h2>
+            <p class="card__note">Received is when a conversation is born; answered is when a person
+            actually replied to it. The ${unidadeTempo}s where the rose line sits above the amber one are
+            the ${unidadeTempo}s the queue grew.</p>
+          </div>
+          <span class="card__aside">${esc(fmtRange(w.from, w.to))}</span>
+        </div>
+        <div class="card__body">${volume}
+          ${umDia ? '' : legend([
+            { label: 'Received', color: seriesColor(0) },
+            { label: 'Answered', color: seriesColor(1) },
+            { label: 'Closed', color: seriesColor(2) },
+          ], { line: true })}
+        </div>
+      </section>
+
       <section class="card">
         <div class="card__head"><div>
           <h2 class="card__title">Time to first response</h2>
@@ -293,19 +293,19 @@ export function renderOverview(data, state) {
         </div></div>
         <div class="card__body">${frtCols}</div>
       </section>
-
-      <section class="card">
-        <div class="card__head"><div>
-          <h2 class="card__title">Refunds and replacements</h2>
-          <p class="card__note">Refund rate is money over money — the amount given back divided by
-          revenue for the same window. Never refunds ÷ conversations.</p>
-        </div></div>
-        <div class="card__body">${dinheiro}
-          <h3 style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:22px 0 12px">Reason for the refund</h3>
-          ${refBars}
-        </div>
-      </section>
     </div>
+
+    <section class="card">
+      <div class="card__head"><div>
+        <h2 class="card__title">Refunds and replacements <span class="chip chip--demo">Demo data</span></h2>
+        <p class="card__note">Refund rate is money over money — the amount given back divided by
+        revenue for the same window. Never refunds ÷ conversations.</p>
+      </div></div>
+      <div class="card__body">${dinheiro}
+        <h3 style="font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:22px 0 12px">Reason for the refund</h3>
+        ${refBars}
+      </div>
+    </section>
 
     <section class="card">
       <div class="card__head"><div>

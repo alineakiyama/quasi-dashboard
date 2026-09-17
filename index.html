@@ -1,123 +1,85 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quasi · Support Portal</title>
-<meta name="description" content="Weekly customer support report for Quasi.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23CB6387'/%3E%3C/svg%3E">
+<title>Quasi · Support Dashboard</title>
+<meta name="description" content="Customer support dashboard for Quasi.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23CB6387'/%3E%3C/svg%3E">
+<script>
+  /* Aplica o tema antes do CSS, para a página não piscar claro→escuro ao abrir. */
+  try { var t = localStorage.getItem('quasi-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Petrona:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 
 <a class="skip" href="#conteudo">Skip to content</a>
 
-<div class="shell">
-
-  <!-- ------------------------------------------------------------ navegação -->
-  <aside class="rail" id="rail">
-    <div class="rail__brand">
-      <span class="wordmark">quasi</span>
-      <span class="rail__sub">Support Portal</span>
+<header class="top">
+  <div class="brand">
+    <span class="brand__mark" aria-hidden="true">q</span>
+    <div>
+      <div class="brand__name">Quasi <span>Support</span></div>
+      <div class="brand__sub">Commslayer · Shopify</div>
     </div>
+  </div>
+  <div class="meta">
+    <dl><dt>Data set</dt><dd id="meta-range">…</dd></dl>
+    <dl><dt>Generated</dt><dd id="meta-generated">…</dd></dl>
+    <dl><dt>Timezone</dt><dd id="meta-tz">…</dd></dl>
+    <button class="btn" id="theme" type="button" aria-label="Switch colour theme">Theme: dark</button>
+  </div>
+</header>
 
-    <nav class="rail__nav" aria-label="Portal sections">
-      <button class="navitem is-active" data-view="overview" type="button">
-        <span class="navitem__dot" aria-hidden="true"></span>
-        <span class="navitem__label">Overview</span>
-      </button>
-      <button class="navitem" data-view="operation" type="button">
-        <span class="navitem__dot" aria-hidden="true"></span>
-        <span class="navitem__label">Operations</span>
-      </button>
-      <button class="navitem" data-view="chargebacks" type="button">
-        <span class="navitem__dot" aria-hidden="true"></span>
-        <span class="navitem__label">Chargebacks</span>
-      </button>
-      <button class="navitem" data-view="plans" type="button">
-        <span class="navitem__dot" aria-hidden="true"></span>
-        <span class="navitem__label">Action plans</span>
-      </button>
-      <button class="navitem" data-view="sources" type="button">
-        <span class="navitem__dot" aria-hidden="true"></span>
-        <span class="navitem__label">Where the numbers come from</span>
-      </button>
-    </nav>
+<div class="toolbar">
+  <nav class="tabs" aria-label="Sections">
+    <button class="tab is-on" data-view="overview" type="button">Overview</button>
+    <button class="tab" data-view="operation" type="button">Operations</button>
+    <button class="tab" data-view="chargebacks" type="button">Chargebacks</button>
+    <button class="tab" data-view="plans" type="button">Action plans</button>
+    <button class="tab" data-view="sources" type="button">Sources</button>
+  </nav>
 
-    <div class="rail__foot">
-      <div class="rail__meta" id="rail-meta"></div>
-      <p class="rail__fake">Every number on this page is made up.</p>
-    </div>
-  </aside>
+  <div class="filters filters--period" id="field-period">
+    <span class="filters__label">Period</span>
+    <div class="seg" id="presets" role="group" aria-label="Quick ranges"></div>
+    <form class="range" id="range" novalidate>
+      <input type="date" id="range-from" aria-label="From" required>
+      <span class="hint" aria-hidden="true">–</span>
+      <input type="date" id="range-to" aria-label="To" required>
+      <button class="btn btn--primary" type="submit" id="range-apply">Apply</button>
+      <button class="btn" type="button" id="range-reset">Reset</button>
+    </form>
+    <span class="hint" id="range-hint" aria-live="polite"></span>
+  </div>
 
-  <!-- ---------------------------------------------------------------- corpo -->
-  <div class="main">
-
-    <header class="topbar">
-      <div class="topbar__title">
-        <h1 id="view-title">Overview</h1>
-        <p id="view-sub"></p>
-      </div>
-
-      <div class="topbar__filters">
-        <div class="field field--range">
-          <span class="field__label" id="range-label">Period</span>
-          <button type="button" class="control control--range" id="range-button"
-                  aria-haspopup="dialog" aria-expanded="false" aria-controls="range-pop"
-                  aria-labelledby="range-label range-text">
-            <span id="range-text">…</span>
-          </button>
-
-          <!-- Atalhos em linhas antes do intervalo personalizado: ninguém quer brigar
-               com um calendário para chegar em "últimos 30 dias". -->
-          <div class="range" id="range-pop" role="dialog" aria-label="Choose a period" hidden>
-            <ul class="range__presets" id="range-presets" role="listbox" aria-label="Quick ranges"></ul>
-            <form class="range__custom" id="range-custom" novalidate>
-              <p class="range__title">Custom range</p>
-              <div class="range__inputs">
-                <label>From<input type="date" id="range-from" required></label>
-                <label>To<input type="date" id="range-to" required></label>
-              </div>
-              <p class="range__hint" id="range-hint" aria-live="polite"></p>
-              <button type="submit" class="range__apply">Apply</button>
-            </form>
-          </div>
-        </div>
-        <label class="field">
-          <span class="field__label">Contact reason</span>
-          <select id="filter-reason" class="control"></select>
-        </label>
-      </div>
-    </header>
-
-    <!-- Fica em todas as telas de propósito. A página é pública e carrega a
-         marca de uma loja real; quem cair aqui pelo link precisa saber o que
-         está vendo antes de olhar qualquer número. -->
-    <p class="demo">
-      <span class="demo__tag">Demo</span>
-      <span>Portfolio piece, not affiliated with Quasi. <b>Every number here is invented</b> —
-      generated by a script, never measured. No real customer, order or support data was used.</span>
-    </p>
-
-    <div class="alerts" id="alerts" hidden></div>
-
-    <main class="content" id="conteudo" tabindex="-1">
-      <div class="loading" id="loading">
-        <span class="loading__pulse" aria-hidden="true"></span>
-        Loading the data…
-      </div>
-      <section class="view" id="view-overview" hidden></section>
-      <section class="view" id="view-operation" hidden></section>
-      <section class="view" id="view-chargebacks" hidden></section>
-      <section class="view" id="view-plans" hidden></section>
-      <section class="view" id="view-sources" hidden></section>
-    </main>
-
+  <div class="filters filters--reason" id="field-reason">
+    <label class="filters__label" for="filter-reason">Reason</label>
+    <select id="filter-reason" class="select"></select>
   </div>
 </div>
+
+<p class="demo"><b>Demo.</b> Portfolio piece, not affiliated with Quasi. Every number here is invented —
+generated by a script, never measured. No real customer, order or support data was used.</p>
+
+<div class="alerts" id="alerts" hidden></div>
+
+<main class="content" id="conteudo" tabindex="-1">
+  <div class="pagehead">
+    <h1 id="view-title">Overview</h1>
+    <p id="view-sub"></p>
+  </div>
+  <div class="loading" id="loading"><span class="loading__pulse" aria-hidden="true"></span>Loading the data…</div>
+  <section class="view" id="view-overview" hidden></section>
+  <section class="view" id="view-operation" hidden></section>
+  <section class="view" id="view-chargebacks" hidden></section>
+  <section class="view" id="view-plans" hidden></section>
+  <section class="view" id="view-sources" hidden></section>
+</main>
 
 <div class="tooltip" id="tooltip" role="status" aria-live="polite" hidden></div>
 

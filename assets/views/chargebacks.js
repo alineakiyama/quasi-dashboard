@@ -132,6 +132,8 @@ export function renderChargebacks(data, state) {
   /* ------------------------------------------------------------ monta --- */
 
   return `
+    <p class="note note--scoped"><span class="chip chip--demo">Demo data</span>&nbsp; Chargebacks have no live
+    source yet — the Commslayer API does not carry them. Everything on this tab is invented until a real feed is connected.</p>
     <div class="grid grid--kpi">${kpis}</div>
 
     <section class="card">

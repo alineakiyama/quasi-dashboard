@@ -1,4 +1,4 @@
-/* Partida: carrega os dados, liga os filtros, chama os renderizadores.
+/* Partida: carrega os dados, liga abas, filtros e tema, chama os renderizadores.
 
    Nada aqui calcula métrica e nada aqui busca arquivo. Ele só decide o que
    mostrar e passa adiante o objeto que data.js devolveu. */
@@ -19,10 +19,10 @@ const VIEWS = {
   overview: {
     title: 'Overview',
     render: renderOverview,
-    sub: (s) => `Quasi support, ${fmtRange(s.window.from, s.window.to)}` +
+    sub: (s) => `${fmtRange(s.window.from, s.window.to)}` +
       (s.compare
-        ? `, against the ${plural(s.compare.days, 'day', 'days')} before.`
-        : ' — there is no earlier data of the same length to compare against.'),
+        ? ` · compared with the ${plural(s.compare.days, 'day', 'days')} before.`
+        : ' · there is no earlier data of the same length to compare against.'),
   },
   operation: {
     title: 'Operations',
@@ -46,14 +46,20 @@ const VIEWS = {
   },
 };
 
+// Quais filtros fazem sentido em cada tela. Operação é retrato de um instante e
+// planos não pertencem a um período; só Overview e Operação recortam por motivo.
+const USA_PERIODO = new Set(['overview', 'chargebacks', 'sources']);
+const USA_MOTIVO = new Set(['overview', 'operation']);
+
 const $ = (sel) => document.querySelector(sel);
 
 const state = { view: 'overview', reason: null, presetId: null, window: null, compare: null };
 let data = null;
 let PRESETS = [];
-let fecharSeletor = () => {};
 
 /* ---------------------------------------------------------------- boot -- */
+
+wireTheme();   // antes dos dados: o botão de tema funciona mesmo se o carregamento falhar
 
 (async function start() {
   try {
@@ -67,7 +73,7 @@ let fecharSeletor = () => {};
   setRange(data.meta.period_start, data.meta.period_end);
 
   fillReasonFilter();
-  fillRailMeta();
+  fillHeaderMeta();
   showWarnings(data.warnings);
   wireRange();
 
@@ -76,7 +82,7 @@ let fecharSeletor = () => {};
     render();
   });
 
-  document.querySelectorAll('.navitem').forEach((btn) => {
+  document.querySelectorAll('.tab').forEach((btn) => {
     btn.addEventListener('click', () => go(btn.dataset.view));
   });
 
@@ -92,121 +98,104 @@ let fecharSeletor = () => {};
   render();
 })();
 
+/* ---------------------------------------------------------------- tema -- */
+
+const TEMA = 'quasi-theme';
+
+function wireTheme() {
+  const btn = $('#theme');
+  const atual = () => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+  const pintar = () => { btn.textContent = `Theme: ${atual()}`; };
+
+  btn.addEventListener('click', () => {
+    const novo = atual() === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = novo;
+    // A preferência é uma conveniência: se o navegador bloquear o armazenamento,
+    // o tema troca do mesmo jeito, só não é lembrado.
+    try { localStorage.setItem(TEMA, novo); } catch { /* sem armazenamento */ }
+    pintar();
+  });
+  pintar();
+}
+
 /* ------------------------------------------------------------- período -- */
 
 function setRange(from, to) {
   const r = clampRange(from, to, data.meta);
   state.window = r;
   state.compare = compareWindow(r.from, r.to, data.meta);
-  // Um intervalo digitado à mão que coincide com um atalho É aquele atalho —
-  // o check aparece nele, em vez de a seleção ficar órfã como "personalizado".
+  // Um intervalo digitado que coincide com um atalho É aquele atalho.
   state.presetId = PRESETS.find((p) => p.from === r.from && p.to === r.to)?.id ?? null;
   paintRange();
 }
 
 function paintRange() {
-  const p = PRESETS.find((x) => x.id === state.presetId);
-  $('#range-text').textContent = p ? `${p.label} · ${fmtRange(p.from, p.to)}` : fmtRange(state.window.from, state.window.to);
-
-  $('#range-presets').innerHTML = PRESETS.map((x) => `
-    <li role="presentation">
-      <button type="button" class="range__item" role="option" data-preset="${x.id}"
-              aria-selected="${x.id === state.presetId}">
-        <svg class="range__check" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M3 8.5l3.2 3.1L13 4.6" fill="none" stroke="currentColor" stroke-width="2.4"
-                stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>${esc(x.label)}</span>
-        <span class="range__dates">${esc(fmtRange(x.from, x.to))}</span>
-      </button>
-    </li>`).join('');
-
-  resetCustomInputs();
+  $('#presets').innerHTML = PRESETS.map((p) => {
+    const on = p.id === state.presetId;
+    return `<button type="button" data-preset="${p.id}" class="${on ? 'is-on' : ''}"
+      aria-pressed="${on}" title="${esc(fmtRange(p.from, p.to))}">${esc(p.short)}</button>`;
+  }).join('');
+  resetInputs();
 }
 
-function resetCustomInputs() {
+function resetInputs() {
   const f = $('#range-from'), t = $('#range-to');
   for (const el of [f, t]) { el.min = data.meta.data_start; el.max = data.meta.data_end; }
   f.value = state.window.from;
   t.value = state.window.to;
-  $('.range__apply').disabled = !hint();
+  validate();
 }
 
 /** Diz, antes de aplicar, o tamanho do intervalo e se vai haver comparação.
-    Devolve se o intervalo é válido. */
-function hint() {
-  const f = $('#range-from').value, t = $('#range-to').value, el = $('#range-hint');
+    Devolve se o que está digitado pode ser aplicado. */
+function validate() {
+  const f = $('#range-from').value, t = $('#range-to').value;
+  const el = $('#range-hint'), apply = $('#range-apply');
   const { data_start: ini, data_end: fim } = data.meta;
   el.classList.remove('is-error');
 
-  if (!f || !t) { el.textContent = 'Pick both dates.'; return false; }
-  if (f > t) { el.textContent = 'The start date is after the end date.'; el.classList.add('is-error'); return false; }
+  const erro = (msg) => { el.textContent = msg; el.classList.add('is-error'); apply.disabled = true; return false; };
+
+  if (!f || !t) return erro('Pick both dates.');
+  if (f > t) return erro('The start date is after the end date.');
   // O min/max do <input type="date"> não impede digitar fora da faixa.
-  if (f < ini || t > fim) {
-    el.textContent = `Data only exists from ${fmtDay(ini)} to ${fmtDay(fim)}.`;
-    el.classList.add('is-error');
-    return false;
-  }
+  if (f < ini || t > fim) return erro(`Data only exists from ${fmtDay(ini)} to ${fmtDay(fim)}.`);
+
   const n = daysBetween(f, t);
+  const temComparacao = Boolean(compareWindow(f, t, data.meta));
+  const aplicado = f === state.window.from && t === state.window.to;
+
   el.textContent = `${plural(n, '1 day', 'days')} · ` +
-    (compareWindow(f, t, data.meta) ? `compared with the ${plural(n, 'day', 'days')} before` : 'no earlier data to compare');
-  return true;
+    (temComparacao ? `vs the ${plural(n, 'day', 'days')} before` : 'no earlier data to compare');
+  apply.disabled = aplicado;
+  return !aplicado;
 }
 
 function wireRange() {
-  const btn = $('#range-button'), pop = $('#range-pop');
-
-  const abrir = () => {
-    pop.hidden = false;
-    btn.setAttribute('aria-expanded', 'true');
-    (pop.querySelector('[aria-selected="true"]') ?? pop.querySelector('.range__item'))?.focus();
-  };
-  const fechar = ({ foco = false } = {}) => {
-    if (pop.hidden) return;
-    pop.hidden = true;
-    btn.setAttribute('aria-expanded', 'false');
-    resetCustomInputs();        // datas digitadas e não aplicadas não sobrevivem ao fechar
-    if (foco) btn.focus();
-  };
-  fecharSeletor = fechar;
-
-  btn.addEventListener('click', () => (pop.hidden ? abrir() : fechar()));
-
-  // Atalho é um clique: aplica e fecha. Só o intervalo personalizado pede "Apply".
-  $('#range-presets').addEventListener('click', (e) => {
-    const item = e.target.closest('[data-preset]');
-    if (!item) return;
-    const p = PRESETS.find((x) => x.id === item.dataset.preset);
+  // Atalho é um clique: aplica na hora.
+  $('#presets').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-preset]');
+    if (!btn) return;
+    const p = PRESETS.find((x) => x.id === btn.dataset.preset);
     setRange(p.from, p.to);
-    fechar({ foco: true });
     render();
-  });
-
-  $('#range-presets').addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-    const itens = [...pop.querySelectorAll('.range__item')];
-    const i = itens.indexOf(document.activeElement);
-    itens[(i + (e.key === 'ArrowDown' ? 1 : -1) + itens.length) % itens.length]?.focus();
-    e.preventDefault();
   });
 
   for (const id of ['#range-from', '#range-to']) {
-    $(id).addEventListener('input', () => { $('.range__apply').disabled = !hint(); });
+    $(id).addEventListener('input', validate);
+    $(id).addEventListener('keydown', (e) => { if (e.key === 'Escape') resetInputs(); });
   }
 
-  $('#range-custom').addEventListener('submit', (e) => {
+  $('#range').addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!hint()) return;
+    if (!validate()) return;
     setRange($('#range-from').value, $('#range-to').value);
-    fechar({ foco: true });
     render();
   });
 
-  document.addEventListener('pointerdown', (e) => {
-    if (!pop.hidden && !e.target.closest('.field--range')) fechar();
-  });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !pop.hidden) fechar({ foco: true });
+  $('#range-reset').addEventListener('click', () => {
+    setRange(data.meta.period_start, data.meta.period_end);
+    render();
   });
 }
 
@@ -217,13 +206,11 @@ function fillReasonFilter() {
     data.reasons.map((r) => `<option value="${esc(r.reason)}">${esc(r.label)}</option>`).join('');
 }
 
-function fillRailMeta() {
+function fillHeaderMeta() {
   const m = data.meta;
-  $('#rail-meta').innerHTML = `
-    <b>${esc(m.brand.name)}</b>
-    Commslayer · Shopify<br>
-    Generated ${esc(fmtStamp(m.generated_at))}<br>
-    Reporting in ${esc(m.reporting_timezone)}`;
+  $('#meta-range').textContent = fmtRange(m.data_start, m.data_end);
+  $('#meta-generated').textContent = fmtStamp(m.generated_at);
+  $('#meta-tz').textContent = m.reporting_timezone;
 }
 
 function showWarnings(warnings) {
@@ -239,7 +226,6 @@ function showWarnings(warnings) {
 function go(view, { silent = false } = {}) {
   if (!VIEWS[view]) return;
   state.view = view;
-  fecharSeletor();
   if (!silent) location.hash = view;
   render();
   $('#conteudo').focus({ preventScroll: true });
@@ -249,18 +235,19 @@ function go(view, { silent = false } = {}) {
 function render() {
   const def = VIEWS[state.view];
 
-  document.querySelectorAll('.navitem').forEach((b) =>
-    b.classList.toggle('is-active', b.dataset.view === state.view));
+  document.querySelectorAll('.tab').forEach((b) => {
+    const on = b.dataset.view === state.view;
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-current', on ? 'page' : 'false');
+  });
 
   $('#view-title').textContent = def.title;
   $('#view-sub').textContent = def.sub(state);
   document.title = `Quasi · ${def.title}`;
 
-  // O seletor de motivo não faz sentido onde nada é recortado por motivo, e o de
-  // período não faz sentido nas telas que não pertencem a um período.
-  const usaMotivo = state.view === 'overview' || state.view === 'operation';
-  $('#filter-reason').closest('.field').style.display = usaMotivo ? '' : 'none';
-  $('.field--range').style.display = (state.view === 'plans' || state.view === 'operation') ? 'none' : '';
+  // style.display, não o atributo hidden: .filters tem display:flex, que venceria o [hidden].
+  $('#field-period').style.display = USA_PERIODO.has(state.view) ? '' : 'none';
+  $('#field-reason').style.display = USA_MOTIVO.has(state.view) ? '' : 'none';
 
   for (const id of Object.keys(VIEWS)) {
     const el = document.getElementById(`view-${id}`);

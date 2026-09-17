@@ -67,11 +67,11 @@ export function presets(meta) {
   // "Today" é o último dia fechado nos arquivos. Com o job diário real, é o dia
   // que o job acabou de fechar — hoje de verdade só existiria com coleta ao longo do dia.
   const lista = [
-    { id: 'today', label: 'Today', from: end, to: end },
-    { id: 'yesterday', label: 'Yesterday', from: addDays(end, -1), to: addDays(end, -1) },
-    { id: 'last7', label: 'Last 7 days', from: addDays(end, -6), to: end },
-    { id: 'last30', label: 'Last 30 days', from: addDays(end, -29), to: end },
-    { id: 'last60', label: 'Last 60 days', from: addDays(end, -59), to: end },
+    { id: 'today', label: 'Today', short: 'Today', from: end, to: end },
+    { id: 'yesterday', label: 'Yesterday', short: 'Yesterday', from: addDays(end, -1), to: addDays(end, -1) },
+    { id: 'last7', label: 'Last 7 days', short: '7 days', from: addDays(end, -6), to: end },
+    { id: 'last30', label: 'Last 30 days', short: '30 days', from: addDays(end, -29), to: end },
+    { id: 'last60', label: 'Last 60 days', short: '60 days', from: addDays(end, -59), to: end },
   ];
   // Um atalho que começaria antes do primeiro dia de dado mostraria um período
   // menor do que o nome promete. Melhor não oferecer.
