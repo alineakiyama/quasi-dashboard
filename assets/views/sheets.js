@@ -37,6 +37,11 @@ const rpcReal = async (nome, params) => {
   return data;
 };
 
+// Aviso quando o período usa datas estimadas (histórico espalhado entre 08/07 e 16/09).
+const avisoEstimado = (t) => (t.estimated
+  ? `<p class="note note--scoped" style="margin-top:12px">${fmtInt(t.estimated)} of ${fmtInt(t.count)} in this period have an <b>estimated</b> date: rows added before Sep 17, 2026 had no date, so they were spread evenly from Jul 8 to Sep 16 in sheet order (top = oldest). Numbers per day or week before Sep 17 are an approximation; only the full Jul 8 – Sep 16 total is exact.</p>`
+  : '');
+
 const money = (v) => fmtMoney(v == null ? null : Number(v));
 const cents = (v) => fmtMoney(v == null ? null : Number(v), { cents: true });
 const pctDe = (a, b) => (b ? `${Number(((a / b) * 100).toFixed(1))}%` : '—');
@@ -246,7 +251,7 @@ export function mountSubscriptions(host, opts) {
       ].join('');
       return `
         <div class="card"><div class="rtiles" style="margin-top:0">${tiles}</div>
-          <p class="note">Each customer counts once — the most recent row for an email wins. Dates are recorded from Sep 17, 2026 on; older rows appear only in the history below.</p>
+          <p class="note">Each customer counts once — the most recent row for an email wins.</p>${avisoEstimado(t)}
         </div>
         ${card('Requests per day', null, grafico(b.by_day, { rotulo: 'Requests' }, alvo))}
         <div class="grid grid--2">
@@ -254,7 +259,7 @@ export function mountSubscriptions(host, opts) {
           ${card('What they asked for', null, barras(b.by_management))}
         </div>
         ${card('Outcome', null, barras(b.by_outcome))}
-        ${card(`History — all ${fmtInt(h.count)} customers`, `Every row in the sheet, including ${fmtInt(h.undated)} without a date.`, barras(h.by_reason))}`;
+        ${card(`History — all ${fmtInt(h.count)} customers`, `Every row in the sheet${h.undated ? `, including ${fmtInt(h.undated)} without any date` : ''}.`, barras(h.by_reason))}`;
     },
   }, opts);
 }
@@ -276,7 +281,7 @@ export function mountReshipments(host, opts) {
       ].join('');
       return `
         <div class="card"><div class="rtiles" style="margin-top:0">${tiles}</div>
-          <p class="note">Each order counts once — the most recent row wins. Dates are recorded from Sep 17, 2026 on; older rows appear only in the history below.</p>
+          <p class="note">Each order counts once — the most recent row wins.</p>${avisoEstimado(t)}
         </div>
         ${card('Cases per day', null, grafico(b.by_day, { rotulo: 'Cases' }, alvo))}
         <div class="grid grid--2">
@@ -288,7 +293,7 @@ export function mountReshipments(host, opts) {
           ${card('By agent', null, barras(b.by_agent))}
         </div>
         <div class="grid grid--2">
-          ${card(`History — status of all ${fmtInt(h.count)} orders`, `Including ${fmtInt(h.undated)} without a date.`, barras(h.by_status))}
+          ${card(`History — status of all ${fmtInt(h.count)} orders`, (h.undated ? `Including ${fmtInt(h.undated)} without any date.` : null), barras(h.by_status))}
           ${card('History — why they failed', null, barras(h.by_reason))}
         </div>`;
     },
@@ -312,14 +317,14 @@ export function mountSupplierIssues(host, opts) {
       ].join('');
       return `
         <div class="card"><div class="rtiles" style="margin-top:0">${tiles}</div>
-          <p class="note">From the Dianxiaomi order issues tab. Each order counts once — the most recent row wins. Dates are recorded from Sep 17, 2026 on.</p>
+          <p class="note">From the Dianxiaomi order issues tab. Each order counts once — the most recent row wins.</p>${avisoEstimado(t)}
         </div>
         ${card('Cases per day', null, grafico(b.by_day, { rotulo: 'Cases' }, alvo))}
         <div class="grid grid--2">
           ${card('What went wrong', null, barras(b.by_reason))}
           ${card('By agent', null, barras(b.by_agent))}
         </div>
-        ${card(`History — all ${fmtInt(h.count)} orders`, `Including ${fmtInt(h.undated)} without a date · ${fmtInt(h.not_messaged)} with the customer not marked as messaged.`, barras(h.by_reason))}`;
+        ${card(`History — all ${fmtInt(h.count)} orders`, `${fmtInt(h.not_messaged)} with the customer not marked as messaged.`, barras(h.by_reason))}`;
     },
   }, opts);
 }
@@ -330,9 +335,9 @@ const LOOKUP = { q: '', body: null, loading: false, error: null };
 
 const CAMPOS = {
   refunds: { titulo: 'Refund Tracker', campos: [['refund_date', 'Refund date', (v) => (v ? fmtDay(v) : '—')], ['refunded_amount', 'Refunded', cents], ['total_amount', 'Order total', cents], ['resolution', 'Resolution'], ['reason', 'Reason'], ['refund_status', 'Status'], ['subscription_status', 'Subscription'], ['ticket_link', 'Ticket']] },
-  reshipments: { titulo: 'Reshipment - 3pl', campos: [['entry_date', 'Date', (v) => (v ? fmtDay(v) : 'no date')], ['agent', 'Agent'], ['reason', 'Reason'], ['customer_request', 'Customer asked for'], ['new_order_number', 'New order'], ['status', 'Status'], ['messaged', 'Messaged'], ['description', 'Description']] },
-  supplier_issues: { titulo: 'Order Issues - Dianxiaomi', campos: [['entry_date', 'Date', (v) => (v ? fmtDay(v) : 'no date')], ['agent', 'Agent'], ['reason', 'Reason'], ['status', 'Status'], ['reshipment_tracking', 'Reshipment tracking'], ['description', 'Description']] },
-  subscriptions: { titulo: 'Subscription Tracker', campos: [['entry_date', 'Date', (v) => (v ? fmtDay(v) : 'no date')], ['management', 'Request'], ['reason_raw', 'Reason'], ['reason_group', 'Reason group'], ['outcome', 'Outcome'], ['requests', 'Notes']] },
+  reshipments: { titulo: 'Reshipment - 3pl', campos: [['entry_date', 'Date', (v) => (v ? fmtDay(v) : 'no date')], ['est_date', 'Estimated date', fmtDay], ['agent', 'Agent'], ['reason', 'Reason'], ['customer_request', 'Customer asked for'], ['new_order_number', 'New order'], ['status', 'Status'], ['messaged', 'Messaged'], ['description', 'Description']] },
+  supplier_issues: { titulo: 'Order Issues - Dianxiaomi', campos: [['entry_date', 'Date', (v) => (v ? fmtDay(v) : 'no date')], ['est_date', 'Estimated date', fmtDay], ['agent', 'Agent'], ['reason', 'Reason'], ['status', 'Status'], ['reshipment_tracking', 'Reshipment tracking'], ['description', 'Description']] },
+  subscriptions: { titulo: 'Subscription Tracker', campos: [['entry_date', 'Date', (v) => (v ? fmtDay(v) : 'no date')], ['est_date', 'Estimated date', fmtDay], ['management', 'Request'], ['reason_raw', 'Reason'], ['reason_group', 'Reason group'], ['outcome', 'Outcome'], ['requests', 'Notes']] },
 };
 
 export function mountLookup(host, { rpc = rpcReal } = {}) {
@@ -420,6 +425,7 @@ export function mountDataCheck(host, { rpc = rpcReal } = {}) {
           <div><dt>Rows in the portal</dt><dd>${fmtInt(x.stored)}<span class="sub">${naPlanilha == null ? '' : bate(linhasBatem)}</span></dd></div>
           ${x.cases != null ? `<div><dt>Unique cases</dt><dd>${fmtInt(x.cases)}<span class="sub">newest row per ${k === 'subscriptions' ? 'email' : 'order'}</span></dd></div>` : ''}
           ${k === 'refunds' ? `<div><dt>Refunded — sheet vs portal</dt><dd>${cents(somaPlanilha)}<span class="sub">portal ${cents(x.refunded_sum)} ${somaPlanilha == null ? '' : bate(somaBate)}</span></dd></div>` : ''}
+          ${x.estimated != null ? `<div><dt>Estimated date</dt><dd>${fmtInt(x.estimated)}<span class="sub">old rows spread Jul 8 – Sep 16</span></dd></div>` : ''}
           <div><dt>Without a date</dt><dd>${fmtInt(x.undated)}<span class="sub">only in history, not in periods</span></dd></div>
           <div><dt>Rows with a problem</dt><dd>${fmtInt(x.with_issues)}<span class="sub">still counted</span></dd></div>
         </dl>
