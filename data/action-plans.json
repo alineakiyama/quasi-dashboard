@@ -1,0 +1,90 @@
+{
+  "schema": "action-plans/1",
+  "note": "Único arquivo de data/ escrito à mão. Não sai do gerador e não pertence a um período — um plano fica aberto até ser fechado.",
+  "plans": [
+    {
+      "plan_id": "pl_001",
+      "title": "Clear the queue that never got a first reply",
+      "problem": "47 conversations have been open for more than 24 hours without a single human reply. To the customer who wrote in, Quasi simply did not answer — and this is the queue that later turns into refund requests and a good share of the 'product not received' chargebacks.",
+      "why_it_matters": "It is the only target in the red this period: 47 against a ceiling of 20. Every day stuck here becomes a refund or a dispute with the bank later.",
+      "priority": 1,
+      "status": "in_progress",
+      "owner": "Amara Osei",
+      "opened_at": "2026-08-25",
+      "metric": "Open 24h+ with no reply at or below 20 at week close, three weeks running.",
+      "actions": [
+        { "text": "Sweep twice a day, 9am and 4pm, through everything past 18 hours without a reply — before it becomes a 24-hour case.", "type": "internal", "done": true },
+        { "text": "Commslayer rule that pushes any conversation without a human reply for 16 hours to the top of the queue.", "type": "tech", "done": true },
+        { "text": "Redistribute the Sunday queue — three people currently cover the day with the biggest pile-up.", "type": "internal", "done": false },
+        { "text": "First-touch macro for tracking questions that answers without needing to pull up the order.", "type": "comms", "done": false }
+      ]
+    },
+    {
+      "plan_id": "pl_002",
+      "title": "Cut tracking volume at the source",
+      "problem": "One in four contacts is 'where is my order'. These are conversations that should not exist: the customer writes because the shipping email never arrived, or because the tracking number has not moved in days and they conclude the order is lost.",
+      "why_it_matters": "It is the single largest block of volume in the operation. Bringing it down frees capacity for everything stuck in plan 1, without hiring anyone.",
+      "priority": 2,
+      "status": "in_progress",
+      "owner": "Daniel Okafor",
+      "opened_at": "2026-08-18",
+      "metric": "'Where is my order' drops from 26% to 18% or less of total volume.",
+      "actions": [
+        { "text": "Proactive email on day 7 post-purchase when tracking has had no new event in 72 hours.", "type": "comms", "done": true },
+        { "text": "Tracking page on the store itself, instead of sending the customer to the carrier's site.", "type": "tech", "done": false },
+        { "text": "Real delivery estimate by region on the product page — today it says '5 to 9 days' to everyone.", "type": "comms", "done": false },
+        { "text": "Review the gap between 'order paid' and 'shipped' with the supplier, currently 3.4 days.", "type": "supplier", "done": false }
+      ]
+    },
+    {
+      "plan_id": "pl_003",
+      "title": "Skin reactions need their own protocol",
+      "problem": "Skin reaction is the reason the team answers fastest and the second slowest to close. The first reply goes out in a little over an hour, but the case stays open because nobody knows when to end it: there is no defined follow-up and no clarity on when to point someone toward medical advice.",
+      "why_it_matters": "It is the only reason carrying brand and regulatory risk. One badly handled case costs far more than any refund on this list.",
+      "priority": 2,
+      "status": "in_progress",
+      "owner": "Priya Raman",
+      "opened_at": "2026-08-11",
+      "metric": "Median resolution for 'Skin reaction' at or below 24h, and 100% of cases with a follow-up logged within 72h.",
+      "actions": [
+        { "text": "Three-question triage script, signed off before it reaches the team.", "type": "policy", "done": true },
+        { "text": "Refunds up to $90 released without escalation whenever a reaction is reported.", "type": "policy", "done": true },
+        { "text": "Automatic 72-hour follow-up to confirm the reaction has cleared.", "type": "tech", "done": false },
+        { "text": "Log the product batch on every case, so it can be cross-checked with the supplier.", "type": "internal", "done": false }
+      ]
+    },
+    {
+      "plan_id": "pl_004",
+      "title": "Subscriptions charging after cancellation",
+      "problem": "Customers cancel their subscription and get charged on the following cycle. When that happens, a good share of them never write to support — they open a dispute with their bank directly. 'Subscription not cancelled' is now the third most common chargeback reason.",
+      "why_it_matters": "A subscription chargeback is the worst kind: the fee is charged even when the case is won, and the volume counts toward the card networks' monitoring programmes.",
+      "priority": 3,
+      "status": "blocked",
+      "owner": null,
+      "opened_at": "2026-08-04",
+      "metric": "Chargeback rate at or below 0.5% of orders, and zero disputes citing 'subscription not cancelled'.",
+      "actions": [
+        { "text": "Reproduce the bug: cancelling within 24 hours of billing does not stop the cycle.", "type": "tech", "done": true },
+        { "text": "Cancellation confirmation email stating the date charges stop.", "type": "comms", "done": false },
+        { "text": "Visible cancel button in the account, with no need to talk to support.", "type": "tech", "done": false },
+        { "text": "Blocked: depends on the subscription app migration, no date set.", "type": "tech", "done": false }
+      ]
+    },
+    {
+      "plan_id": "pl_005",
+      "title": "Deliveries lost on the last mile",
+      "problem": "'Delivery problem' is the reason that takes longest to close — the case sits waiting on the carrier, which takes days to respond. A share of them come back marked as delivered when the customer never received anything.",
+      "why_it_matters": "On its own it drags the whole operation's median resolution up, and it is the origin of most replacements shipped.",
+      "priority": 3,
+      "status": "not_started",
+      "owner": "Elena Vasquez",
+      "opened_at": "2026-09-01",
+      "metric": "Median resolution for 'Delivery problem' at or below 40h.",
+      "actions": [
+        { "text": "Fixed response deadline with the carrier for lost-package investigations.", "type": "supplier", "done": false },
+        { "text": "Reship without waiting for the verdict when the order is worth less than the cost of investigating.", "type": "policy", "done": false },
+        { "text": "Compare 'delivered but not received' rates by region and cut the worst routes.", "type": "internal", "done": false }
+      ]
+    }
+  ]
+}
