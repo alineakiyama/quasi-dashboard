@@ -37,7 +37,7 @@ const ORIGENS_PERMITIDAS = new Set([
 // como fechado um dia que para o Commslayer ainda está aberto.
 const FUSO = 'America/New_York';
 const TTL_FORCADO_MS = 60 * 1000;              // "Refresh" nunca bate no Commslayer mais de 1x/min por período
-const TTL_COM_HOJE_MS = 5 * 60 * 1000;        // período que inclui hoje ainda está mudando
+const TTL_COM_HOJE_MS = 60 * 1000;            // período que inclui hoje ainda está mudando; a tela atualiza a cada minuto
 const TTL_FECHADO_MS = 6 * 60 * 60 * 1000;     // dia fechado quase não muda (CSAT chega atrasado)
 const MAX_DIAS = 400;
 const TIMEOUT_MS = 25_000;

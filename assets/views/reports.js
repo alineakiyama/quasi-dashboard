@@ -16,6 +16,10 @@ import {
 // O Commslayer fecha os dias no fuso da conta, que devolve datas em -04:00.
 const FUSO = 'America/New_York';
 const POR_PAGINA = 25;
+// A tela se atualiza sozinha nesse intervalo enquanto o período inclui hoje. O
+// cache da função tem o mesmo tempo, então o Commslayer recebe no máximo uma
+// chamada por minuto por período, não importa quantas telas estejam abertas.
+const AUTO_MS = 60 * 1000;
 
 const hoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: FUSO }).format(new Date());
 const addDays = (iso, n) => {
@@ -163,6 +167,40 @@ export function mountReports(host, { fetcher = fetchReports } = {}) {
   paintControls(host);
   paintAll(host);
   if (!(S.body && S.bodyKey === chaveAtual())) load(host);
+  agendarAtualizacao(host);
+}
+
+/* ------------------------------------------------ atualização automática -- */
+
+let timer = null;
+let ouvindoVisibilidade = false;
+
+const incluiHoje = () => Boolean(S.to) && S.to >= hoje();
+
+/** Só atualiza quando faz sentido: a aba Reports visível, a janela do navegador
+    em primeiro plano, o período incluindo hoje e nenhuma busca em andamento. */
+function podeAtualizar(host) {
+  return !host.hidden && document.visibilityState === 'visible' && incluiHoje() && !S.loading && !S.silencioso;
+}
+
+function agendarAtualizacao(host) {
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (host.hidden) { clearInterval(timer); timer = null; return; }
+    if (podeAtualizar(host)) load(host, { silent: true });
+  }, AUTO_MS);
+
+  // Voltou para a aba do navegador depois de um tempo fora: atualiza já, em vez
+  // de esperar o próximo minuto com números velhos na tela.
+  if (!ouvindoVisibilidade) {
+    ouvindoVisibilidade = true;
+    document.addEventListener('visibilitychange', () => {
+      const alvo = document.getElementById('view-reports');
+      if (!alvo || !S.body || !podeAtualizar(alvo)) return;
+      const idade = Date.now() - Date.parse(S.body.generated_at ?? 0);
+      if (idade >= AUTO_MS) load(alvo, { silent: true });
+    });
+  }
 }
 
 const $rp = (host, nome) => host.querySelector(`[data-rp="${nome}"]`);
@@ -235,40 +273,67 @@ function validar(host) {
 
 /* --------------------------------------------------------------- busca -- */
 
-async function load(host, { refresh = false } = {}) {
+/** Só o conteúdo dos relatórios, sem horários de busca: se ela não mudou, não
+    há o que redesenhar. */
+const assinatura = (body) => JSON.stringify(
+  Object.entries(body?.reports ?? {}).map(([nome, r]) => [nome, r.payload]),
+);
+
+/**
+ * Busca os relatórios do período atual.
+ * silent: atualização automática. Não apaga a tela, não mostra "Loading", não
+ * troca números por erro se falhar, e só redesenha o que de fato mudou.
+ */
+async function load(host, { refresh = false, silent = false } = {}) {
+  if (silent && (S.loading || S.silencioso)) return;
   S.ctrl?.abort();
   const ctrl = new AbortController();
   S.ctrl = ctrl;
   const chave = chaveAtual();
 
-  S.loading = true;
-  S.error = null;
-  host.classList.add('is-loading');
-  paintStatus(host);
+  if (silent) {
+    S.silencioso = true;
+  } else {
+    S.loading = true;
+    S.error = null;
+    host.classList.add('is-loading');
+    paintStatus(host);
+  }
 
+  let mudou = true;
   try {
     const body = await S.fetcher({
       from: S.from, to: S.to, ...janelaComparacao(),
       businessHours: S.businessHours, refresh, signal: ctrl.signal,
     });
     if (ctrl.signal.aborted) return;
+    mudou = !(silent && S.bodyKey === chave && assinatura(body) === assinatura(S.body));
     S.body = body;
     S.bodyKey = chave;
+    S.autoFalhou = false;
   } catch (err) {
     if (err.name === 'AbortError') return;
-    S.error = err.message;
+    if (silent) { S.autoFalhou = true; mudou = false; }   // mantém os números que já estão na tela
+    else S.error = err.message;
   } finally {
     if (S.ctrl === ctrl) {
       S.loading = false;
+      S.silencioso = false;
       host.classList.remove('is-loading');
     }
   }
-  if (S.ctrl === ctrl) paintAll(host);
+  if (S.ctrl !== ctrl) return;
+  if (mudou) paintAll(host);
+  else paintStatus(host);
 }
 
 /* ----------------------------------------------------------- desenhos -- */
 
 function paintAll(host) {
+  // Redesenhar as tabelas volta a rolagem horizontal para o começo; quem estava
+  // olhando as colunas da direita não pode ser jogado de volta a cada minuto.
+  const rolagem = [...host.querySelectorAll('.tablewrap')].map((el) => el.scrollLeft);
+
   paintStatus(host);
   paintErrors(host);
   paintOverview(host);
@@ -276,6 +341,8 @@ function paintAll(host) {
   paintCsatTop(host);
   paintTables(host);
   paintLabels(host);
+
+  host.querySelectorAll('.tablewrap').forEach((el, i) => { if (rolagem[i]) el.scrollLeft = rolagem[i]; });
 }
 
 function paintControls(host) {
@@ -312,7 +379,8 @@ function paintStatus(host) {
   const vencido = entradas.some((r) => r.stale);
   el.innerHTML = `
     <span class="rp-live">Live from Commslayer · ${periodo}</span>
-    <span>updated ${min < 1 ? 'just now' : `${min} min ago`}</span>
+    <span>updated ${min < 1 ? 'just now' : `${min} min ago`}${incluiHoje() ? ' · updates every minute' : ''}</span>
+    ${S.autoFalhou ? '<span class="is-warn">last automatic update failed — retrying</span>' : ''}
     ${vencido ? '<span class="is-warn">Commslayer did not answer — showing the last saved numbers</span>' : ''}
     <button type="button" class="btn" data-rp-refresh>Refresh</button>`;
 }
