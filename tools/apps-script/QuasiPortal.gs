@@ -212,7 +212,7 @@ function quasiPortalEnviar_(nome, forcar) {
   var sh = ss.getSheetByName(nome);
   if (!sh) return 'tab not found';
 
-  var tz = quasiPortalFuso_();
+  var tz = ss.getSpreadsheetTimeZone();   // pode vir vazio em cópias
   var info = quasiPortalCabecalho_(sh);
   var ncols = info.cabecalhos.length;
   var ultimaLinha = sh.getLastRow();
@@ -225,7 +225,7 @@ function quasiPortalEnviar_(nome, forcar) {
   var soma = 0;
   for (var k = 0; k < valores.length; k++) {
     var v = valores[k].map(function (c) {
-      if (c instanceof Date) return Utilities.formatDate(c, tz, 'yyyy-MM-dd');
+      if (c instanceof Date) return quasiPortalDia_(c, tz);
       return typeof c === 'string' ? c.trim() : c;
     });
     var vazia = v.every(function (c) { return c === '' || c === null; });
@@ -271,4 +271,13 @@ function quasiPortalFuso_() {
 /** Para rodar pelo editor: envia as 4 abas agora e mostra o resultado no log. */
 function quasiPortalTestNow() {
   console.log(quasiPortalSyncAll(true));
+}
+
+/** Data de uma célula como yyyy-MM-dd, igual ao que a planilha mostra.
+    Sem fuso na planilha, formatar em outro fuso volta um dia; então arredonda
+    para o dia UTC mais próximo (a meia-noite da planilha fica a menos de 12 h dele). */
+function quasiPortalDia_(d, tz) {
+  if (tz) return Utilities.formatDate(d, tz, 'yyyy-MM-dd');
+  var dia = 864e5;
+  return new Date(Math.round(d.getTime() / dia) * dia).toISOString().slice(0, 10);
 }
