@@ -418,3 +418,7 @@ enabled = true
 # chaves novas do Supabase; a verificação automática de JWT do gateway não.
 [functions.reports]
 verify_jwt = false
+
+# Chamada pelo script da planilha, autenticada pelo segredo SHEETS_SYNC_SECRET.
+[functions.sheets-sync]
+verify_jwt = false

@@ -10,6 +10,9 @@ import { presets, compareWindow, clampRange, daysBetween } from './metrics.js';
 import { wireCharts, fmtRange, fmtDay, fmtInt, esc } from './charts.js';
 
 import { mountReports } from './views/reports.js';
+import {
+  mountRefunds, mountSubscriptions, mountReshipments, mountSupplierIssues, mountLookup, mountDataCheck,
+} from './views/sheets.js';
 import { renderOverview } from './views/overview.js';
 import { renderOperation } from './views/operation.js';
 import { renderChargebacks } from './views/chargebacks.js';
@@ -23,6 +26,36 @@ const VIEWS = {
     title: 'Reports',
     mount: mountReports,
     sub: () => 'Live from Commslayer — the same numbers as the Commslayer portal.',
+  },
+  refunds: {
+    title: 'Refunds',
+    mount: mountRefunds,
+    sub: () => 'From the Refund Tracker tab of the tracking spreadsheet. Each row is one refund.',
+  },
+  subscriptions: {
+    title: 'Subscriptions',
+    mount: mountSubscriptions,
+    sub: () => 'Cancellations and changes from the Subscription Tracker tab.',
+  },
+  reshipments: {
+    title: 'Reshipments',
+    mount: mountReshipments,
+    sub: () => 'Failed orders and reshipments from the Reshipment - 3pl tab.',
+  },
+  supplier: {
+    title: 'Supplier issues',
+    mount: mountSupplierIssues,
+    sub: () => 'Order problems from the Order Issues - Dianxiaomi tab.',
+  },
+  lookup: {
+    title: 'Order lookup',
+    mount: mountLookup,
+    sub: () => 'Everything the tracking spreadsheet has about one order or customer, in one place.',
+  },
+  datacheck: {
+    title: 'Data check',
+    mount: mountDataCheck,
+    sub: () => 'Does the portal match the spreadsheet? Row counts, totals and anything that needs attention.',
   },
   overview: {
     title: 'Overview',
@@ -258,7 +291,7 @@ function go(view, { silent = false } = {}) {
 
 function render() {
   const def = VIEWS[state.view];
-  const real = state.view === 'reports';
+  const real = Boolean(def.mount);   // telas com dado real têm os próprios controles
 
   document.querySelectorAll('.tab').forEach((b) => {
     const on = b.dataset.view === state.view;
