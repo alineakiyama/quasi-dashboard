@@ -219,6 +219,7 @@ const ABAS: Record<string, Aba> = {
     // trocados, foi digitada invertida — ex.: 08/07 escrito como 07/08.
     depois(regs) {
       const dia = (s: string) => Date.parse(`${s}T00:00:00Z`) / 864e5;
+      const hojeNY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
       const certas = regs.map((r) => {
         const s = r.refund_date as string | null;
         return s && +s.slice(8, 10) > 12 ? dia(s) : null;
@@ -236,7 +237,9 @@ const ABAS: Record<string, Aba> = {
         viz.sort((a, b) => a - b);
         const mediana = viz[viz.length >> 1];
         const trocada = iso(+s.slice(0, 4), d, m);
-        if (Math.abs(dia(trocada) - mediana) + 3 < Math.abs(dia(s) - mediana)) {
+        // Reembolso não acontece no futuro: se só a versão trocada já passou, é ela.
+        const futura = s > hojeNY && trocada <= hojeNY;
+        if (futura || Math.abs(dia(trocada) - mediana) + 3 < Math.abs(dia(s) - mediana)) {
           r.refund_date = trocada;
           r.date_corrected = true;
         }
