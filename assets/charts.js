@@ -38,6 +38,23 @@ export function fmtMoney(n, { cents = false } = {}) {
   return '$' + (cents ? nf2 : nf0).format(n);
 }
 
+/** Segundos no formato do portal do Commslayer.
+    Completo (cartões): "1d 8h 21m 56s". Curto (tabelas e eixos): as duas maiores
+    unidades, "6h 47m". Unidades zeradas no meio ou no fim não aparecem. */
+export function fmtDuration(sec, { short = false } = {}) {
+  if (sec == null || Number.isNaN(Number(sec))) return '—';
+  let s = Math.max(0, Math.round(Number(sec)));
+  if (s === 0) return '0s';
+  const partes = [];
+  for (const [unidade, tam] of [['d', 86400], ['h', 3600], ['m', 60], ['s', 1]]) {
+    const q = Math.floor(s / tam);
+    s -= q * tam;
+    if (q || partes.length) partes.push([q, unidade]);
+  }
+  const usadas = short ? partes.slice(0, 2) : partes;
+  return usadas.filter(([q], i) => q || i === 0).map(([q, u]) => `${q}${u}`).join(' ');
+}
+
 /** Horas em algo que se lê. Abaixo de 1h vira minuto; acima de 48h vira dia. */
 export function fmtHours(h) {
   if (h == null) return '—';
@@ -162,8 +179,11 @@ function niceScale(max) {
  *   series : [{ key, label, color, values: [] }, …]
  * Uma escala só, sempre. Duas medidas de grandeza diferente pedem dois gráficos.
  */
-export function lineChart({ days, series, height = 250, formatValue = fmtInt, yLabel, xLabel = fmtDayShort, titles }) {
+export function lineChart({ days, series, height = 250, formatValue = fmtInt, yLabel, xLabel = fmtDayShort, titles, width = 780 }) {
   const H = height;
+  // A largura do desenho deve acompanhar a largura real do cartão: um viewBox
+  // de 780 esticado para 1.400 px aumenta o texto dos eixos quase 2x.
+  const W = width;
   // Com até 4 séries cada linha ganha rótulo na ponta, e o rótulo precisa de
   // margem para caber — senão ele sai pela borda do viewBox.
   const direct = series.length <= 4;
@@ -188,8 +208,9 @@ export function lineChart({ days, series, height = 250, formatValue = fmtInt, yL
   const paths = series.map((s) => {
     const pts = s.values.map((v, i) => (v == null ? null : `${x(i).toFixed(1)},${y(v).toFixed(1)}`)).filter(Boolean);
     if (!pts.length) return '';
+    // Série tracejada = período de comparação: o traço distingue as linhas sem depender só da cor.
     return `<polyline fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round"
-              stroke-linecap="round" points="${pts.join(' ')}"/>`;
+              stroke-linecap="round"${s.dash ? ' stroke-dasharray="5 4"' : ''} points="${pts.join(' ')}"/>`;
   }).join('');
 
   // Rótulo direto na ponta: com até 4 séries a identidade não precisa depender
@@ -225,7 +246,8 @@ export function lineChart({ days, series, height = 250, formatValue = fmtInt, yL
   // Faixas de acerto: uma por dia, largas o bastante para o mouse pegar.
   const bandW = iw / Math.max(1, days.length - 1);
   const hits = days.map((d, i) => {
-    const payload = series.map((s) => ({ label: s.label, color: s.color, value: s.values[i] }));
+    // O tooltip recebe o valor já formatado: segundos crus ("116490") não dizem nada.
+    const payload = series.map((s) => ({ label: s.label, color: s.color, value: s.values[i] == null ? null : formatValue(s.values[i]) }));
     const data = esc(JSON.stringify({ title: titles?.[i] ?? fmtDay(d), rows: payload }));
     return `<rect class="hit" data-tt="${data}" data-x="${x(i).toFixed(1)}"
       x="${(x(i) - bandW / 2).toFixed(1)}" y="${PAD.t}" width="${bandW.toFixed(1)}" height="${ih}"/>`;
@@ -262,7 +284,7 @@ export function columnChart({ days, values, height = 200, color = 'var(--series-
   const bars = values.map((v, i) => {
     const cx = PAD.l + slot * i + slot / 2;
     const h = Math.max(0, PAD.t + ih - y(v ?? 0));
-    const data = esc(JSON.stringify({ title: titles?.[i] ?? fmtDay(days[i]), rows: [{ label, color, value: v }] }));
+    const data = esc(JSON.stringify({ title: titles?.[i] ?? fmtDay(days[i]), rows: [{ label, color, value: v == null ? null : formatValue(v) }] }));
     return `<rect class="hit" data-tt="${data}" x="${(cx - slot / 2).toFixed(1)}" y="${PAD.t}" width="${slot.toFixed(1)}" height="${ih}"/>
       <rect x="${(cx - bw / 2).toFixed(1)}" y="${y(v ?? 0).toFixed(1)}" width="${bw.toFixed(1)}"
         height="${h.toFixed(1)}" rx="4" fill="${color}" pointer-events="none"/>`;

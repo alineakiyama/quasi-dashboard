@@ -32,7 +32,11 @@ const ORIGENS_PERMITIDAS = new Set([
   'http://localhost:8125',
 ]);
 
-const FUSO = 'America/Sao_Paulo';
+// O Commslayer fecha os dias no fuso da conta, e as datas que ele devolve vêm
+// em -04:00: Nova York. "Hoje" precisa ser o hoje de lá, senão o cache trata
+// como fechado um dia que para o Commslayer ainda está aberto.
+const FUSO = 'America/New_York';
+const TTL_FORCADO_MS = 60 * 1000;              // "Refresh" nunca bate no Commslayer mais de 1x/min por período
 const TTL_COM_HOJE_MS = 5 * 60 * 1000;        // período que inclui hoje ainda está mudando
 const TTL_FECHADO_MS = 6 * 60 * 60 * 1000;     // dia fechado quase não muda (CSAT chega atrasado)
 const MAX_DIAS = 400;
@@ -111,7 +115,7 @@ async function relatorio(relatorio: Relatorio, p: Periodo): Promise<Entrada> {
   if (ACEITA_HORARIO_COMERCIAL.has(relatorio)) q.set('business_hours', String(p.businessHours));
 
   const chave = `${relatorio}?${q}`;
-  const ttl = p.to >= hojeNoFuso() ? TTL_COM_HOJE_MS : TTL_FECHADO_MS;
+  const ttl = p.refresh ? TTL_FORCADO_MS : (p.to >= hojeNoFuso() ? TTL_COM_HOJE_MS : TTL_FECHADO_MS);
 
   const guardado = await lerCache(chave);
   const idade = guardado ? Date.now() - Date.parse(guardado.fetched_at) : Infinity;
@@ -143,7 +147,7 @@ async function relatorio(relatorio: Relatorio, p: Periodo): Promise<Entrada> {
 
 /* ---------------------------------------------------------------- handler */
 
-type Periodo = { from: string; to: string; compareFrom?: string; compareTo?: string; businessHours: boolean };
+type Periodo = { from: string; to: string; compareFrom?: string; compareTo?: string; businessHours: boolean; refresh: boolean };
 
 Deno.serve(async (req) => {
   const origem = req.headers.get('Origin');
@@ -182,6 +186,7 @@ Deno.serve(async (req) => {
     compareFrom: compareFrom ?? undefined,
     compareTo: compareTo ?? undefined,
     businessHours: url.searchParams.get('business_hours') === 'true',
+    refresh: url.searchParams.get('refresh') === '1',
   };
 
   const resultados = await Promise.allSettled(pedidos.map((r) => relatorio(r as Relatorio, periodo)));
