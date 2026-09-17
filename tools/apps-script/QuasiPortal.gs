@@ -267,3 +267,8 @@ function quasiPortalEnviar_(nome, forcar) {
 function quasiPortalFuso_() {
   return SpreadsheetApp.getActive().getSpreadsheetTimeZone() || Session.getScriptTimeZone() || 'America/New_York';
 }
+
+/** Para rodar pelo editor: envia as 4 abas agora e mostra o resultado no log. */
+function quasiPortalTestNow() {
+  console.log(quasiPortalSyncAll(true));
+}
