@@ -145,6 +145,20 @@ async function relatorio(relatorio: Relatorio, p: Periodo): Promise<Entrada> {
   return await emAndamento.get(chave)!;
 }
 
+/* ---------------------------------------------------------- auto-labels */
+
+// Não vem do Commslayer na hora: sai do banco, alimentado pelo webhook
+// (função commslayer-events). Consulta leve, sem cache.
+const AUTO_LABELS = 'auto_labels';
+
+async function autoLabels(p: Periodo): Promise<Entrada> {
+  const { data, error } = await admin.rpc('report_auto_labels', {
+    p_from: p.from, p_to: p.to, p_cfrom: p.compareFrom ?? null, p_cto: p.compareTo ?? null,
+  });
+  if (error) throw new Error(`auto-labels: ${error.message}`);
+  return { payload: data, fetched_at: new Date().toISOString(), cached: false, stale: false };
+}
+
 /* ---------------------------------------------------------------- handler */
 
 type Periodo = { from: string; to: string; compareFrom?: string; compareTo?: string; businessHours: boolean; refresh: boolean };
@@ -176,9 +190,9 @@ Deno.serve(async (req) => {
     return json({ error: 'compare_from e compare_to precisam vir juntos, como datas válidas.' }, 400, origem);
   }
 
-  const pedidos = (url.searchParams.get('reports') ?? RELATORIOS.join(','))
+  const pedidos = (url.searchParams.get('reports') ?? [...RELATORIOS, AUTO_LABELS].join(','))
     .split(',').map((s) => s.trim()).filter(Boolean);
-  const invalidos = pedidos.filter((r) => !(RELATORIOS as readonly string[]).includes(r));
+  const invalidos = pedidos.filter((r) => r !== AUTO_LABELS && !(RELATORIOS as readonly string[]).includes(r));
   if (invalidos.length) return json({ error: `Relatório desconhecido: ${invalidos.join(', ')}` }, 400, origem);
 
   const periodo: Periodo = {
@@ -189,7 +203,7 @@ Deno.serve(async (req) => {
     refresh: url.searchParams.get('refresh') === '1',
   };
 
-  const resultados = await Promise.allSettled(pedidos.map((r) => relatorio(r as Relatorio, periodo)));
+  const resultados = await Promise.allSettled(pedidos.map((r) => (r === AUTO_LABELS ? autoLabels(periodo) : relatorio(r as Relatorio, periodo))));
 
   const reports: Record<string, Entrada> = {};
   const errors: Record<string, string> = {};

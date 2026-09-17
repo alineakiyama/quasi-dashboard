@@ -161,7 +161,15 @@ export function mountReports(host, { fetcher = fetchReports } = {}) {
         </div></div>
         <div class="card__body" data-rp="lb-list"></div>
       </section>
-    </div>`;
+    </div>
+
+    <section class="card">
+      <div class="card__head"><div>
+        <h2 class="card__title">Auto-labels</h2>
+        <p class="card__note" data-rp="al-note">Labels Commslayer applies by itself, per ticket created in the period.</p>
+      </div></div>
+      <div class="card__body" data-rp="al-list"></div>
+    </section>`;
 
   wire(host);
   paintControls(host);
@@ -341,6 +349,7 @@ function paintAll(host) {
   paintCsatTop(host);
   paintTables(host);
   paintLabels(host);
+  paintAutoLabels(host);
 
   host.querySelectorAll('.tablewrap').forEach((el, i) => { if (rolagem[i]) el.scrollLeft = rolagem[i]; });
 }
@@ -629,6 +638,31 @@ function paintLabels(host) {
       <span class="bar__track"><span class="bar__fill" style="width:${((l.amount ?? 0) / topo) * 100}%"></span></span>
       <span class="bar__value">${int(l.amount)}${S.compare && l.amount_previous != null ? `<span class="cell-sub">prev ${int(l.amount_previous)}</span>` : ''}</span>
     </div>`).join('')}</div>`;
+}
+
+// "cancel-order" → "Cancel Order", como o portal mostra.
+const tituloLabel = (s) => String(s).split(/[-_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
+
+function paintAutoLabels(host) {
+  const d = rep('auto_labels');
+  const alvo = $rp(host, 'al-list'), nota = $rp(host, 'al-note');
+  if (!d) { alvo.innerHTML = S.body?.errors?.auto_labels ? '<p class="empty">Could not load auto-labels.</p>' : placeholder(); return; }
+  const lista = (d.labels ?? []).filter((l) => l.count > 0 || (S.compare && l.previous > 0));
+  const soma = lista.reduce((a, l) => a + l.count, 0);
+  const topo = Math.max(1, ...lista.map((l) => l.count));
+  const desde = d.coverage_from;
+  const avisos = [];
+  if (!desde) avisos.push('Counting has not started yet: the Commslayer webhook is still being connected.');
+  else if (S.from < desde) avisos.push(`Counted from ${fmtDay(desde)} — tickets before that day are not in these numbers.`);
+  if (d.webhook && (d.webhook.exists === false || d.webhook.broken || d.webhook.active === false)) avisos.push('The Commslayer webhook is off; numbers are still checked every 10 minutes.');
+  nota.textContent = `Labels Commslayer applies by itself, per ticket created in the period · ${fmtInt(d.tickets ?? 0)} tickets.`;
+  alvo.innerHTML = (avisos.length ? `<p class="note note--scoped" style="margin:0 0 12px">${avisos.map(esc).join(' ')}</p>` : '') +
+    (lista.length ? `<div class="bars">${lista.map((l) => `
+    <div class="bar">
+      <span class="bar__label">${esc(tituloLabel(l.label))}</span>
+      <span class="bar__track"><span class="bar__fill" style="width:${(l.count / topo) * 100}%"></span></span>
+      <span class="bar__value">${soma ? Math.round((l.count / soma) * 100) : 0}%<span class="cell-sub">${int(l.count)}${S.compare && l.previous != null ? ` · prev ${int(l.previous)}` : ''}</span></span>
+    </div>`).join('')}</div>` : '<p class="empty">No auto-labels in this period yet.</p>');
 }
 
 function placeholder() {

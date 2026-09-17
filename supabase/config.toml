@@ -422,3 +422,8 @@ verify_jwt = false
 # Chamada pelo script da planilha, autenticada pelo segredo SHEETS_SYNC_SECRET.
 [functions.sheets-sync]
 verify_jwt = false
+
+# Chamada pelo webhook do Commslayer e pela conferência agendada; autenticada
+# pela chave CL_EVENTS_KEY na URL.
+[functions.commslayer-events]
+verify_jwt = false
