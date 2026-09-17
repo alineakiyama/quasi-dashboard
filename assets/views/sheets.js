@@ -112,6 +112,7 @@ function montarComPeriodo(host, def, { rpc = rpcReal } = {}) {
     <div class="view" data-s="conteudo"></div>`;
 
   const $s = (n) => host.querySelector(`[data-s="${n}"]`);
+  const raiz = $s('conteudo');   // some quando a pessoa troca de aba
 
   const pintarControles = () => {
     $s('presets').innerHTML = presets().map((p) => {
@@ -162,7 +163,7 @@ function montarComPeriodo(host, def, { rpc = rpcReal } = {}) {
     } finally {
       if (S.ctrl === ctrl) { S.loading = false; S.silencioso = false; host.classList.remove('is-loading'); }
     }
-    if (S.ctrl !== ctrl) return;
+    if (S.ctrl !== ctrl || !raiz.isConnected) return;
     if (mudou) pintar(); else pintarStatus();
   };
 
